@@ -1,7 +1,6 @@
 // script.js - The main controller/entry point
 
 // ==================== IMPORTS ====================
-// Bring in the functions we need from other files
 import {
     showMessage,
     renderClassBar,
@@ -9,19 +8,30 @@ import {
     renderStatPriorities,
     renderProficiencies,
     renderAscensions,
-    toggleAscensionsPanel
+    toggleAscensionsPanel,
+    renderGearList,
+    toggleGearDatabase,
+    renderCurrentGear,
+    renderLoadoutBuilder,
 } from './uiRenderer.js';
-import { getState, setClass } from './characterState.js';
+
+import {
+    getState,
+    setClass,
+    setFilterMinLevel,
+    setFilterMaxLevel,
+    setFilterSearch,
+    setFilterSlot,
+    getFilters
+} from './characterState.js';
+
 import AscendencyData from './Ascendency_Data.js';
-// We'll import more as we add them
 
 // ==================== DATA ====================
-// The real classes from the game (we could also import this from a data file later)
 const ERENSHOR_CLASSES = [
     "Windblade", "Paladin", "Reaver", "Druid", "Stormcaller", "Arcanist"
 ];
 
-// Class descriptions (from your older version)
 const CLASS_DESCRIPTIONS = {
     Windblade: 'Dual-wield melee DPS. Primary stats: DEX (2:1 over STR), AGI. Aura: Presence of Vitheo grants DEX/AGI and Attack Speed.',
     Paladin: 'Tanky melee with heals. Primary stats: STR and END for survivability, with some INT/WIS for healing. Aura: Presence of Soluna grants STR/END.',
@@ -30,7 +40,7 @@ const CLASS_DESCRIPTIONS = {
     Stormcaller: 'Elemental caster DPS. Primary stats: INT for spell power, AGI from aura. Aura: Presence of Storms grants AGI and Magic Resist.',
     Arcanist: 'Pure magic DPS/utility. Primary stats: INT for damage, WIS and CHA for mana sustain. Aura: Presence of Brax grants INT/WIS/CHA.'
 };
-// Class stat weights (from your older version)
+
 const CLASS_STAT_WEIGHTS = {
     Windblade: { dex: 10, str: 7, res: 1, agi: 4, end: 1, int: 0, wis: 0, cha: 0, haste: 8, armor: 0 },
     Paladin: { str: 8, end: 8, dex: 4, agi: 2, int: 3, wis: 3, cha: 1, res: 2, haste: 0, armor: 8 },
@@ -39,7 +49,7 @@ const CLASS_STAT_WEIGHTS = {
     Stormcaller: { int: 10, agi: 6, wis: 5, dex: 2, end: 2, str: 1, cha: 2, res: 4, haste: 8, armor: 0 },
     Arcanist: { int: 10, wis: 7, cha: 5, end: 2, agi: 1, str: 0, dex: 0, res: 8, haste: 0, armor: 0 }
 };
-// Class base proficiencies (from your older version)
+
 const CLASS_PROFICIENCIES = {
     Windblade: { physicality: 10, hardiness: 8, finesse: 12, defense: 6, arcanism: 8, restoration: 6, mind: 5 },
     Paladin: { physicality: 10, hardiness: 10, finesse: 12, defense: 6, arcanism: 6, restoration: 10, mind: 6 },
@@ -48,77 +58,23 @@ const CLASS_PROFICIENCIES = {
     Stormcaller: { physicality: 6, hardiness: 6, finesse: 12, defense: 6, arcanism: 10, restoration: 6, mind: 6 },
     Arcanist: { physicality: 3, hardiness: 10, finesse: 3, defense: 3, arcanism: 14, restoration: 9, mind: 10 }
 };
-// Class ID to name mapping (based on usedBy values from Ascendency_Data.js)
+
 const CLASS_ID_TO_NAME = {
-    2: "Arcanist",      // Arcane Mastery, Cooldown Reduction, etc.
-    // We'll discover the others from your debug output
+    1: "Windblade",
+    2: "Arcanist",
+    3: "Paladin",
+    4: "Reaver",
+    5: "Druid",
+    6: "Stormcaller"
 };
 
-// Debug: See all available class IDs
-console.log("Available class IDs:", [...new Set(AscendencyData.map(asc => asc.usedBy))]);
-// ==================== INITIALIZATION ====================
-console.log("🚀 Sloptimizer initializing with modules...");
+// ==================== GLOBAL VARIABLES ====================
+let gearData = [];  // Will be populated dynamically
 
-// Set up event listeners
-function setupEventListeners() {
-    // Listen for custom events from UI
-    document.addEventListener('classSelected', (event) => {
-        const className = event.detail.className;
-        handleClassSelection(className);
-    });
-}
+// ==================== FUNCTIONS ====================
 
-// Handle class selection
-
-function handleClassSelection(className) {
-    console.log(`Class selected: ${className}`);
-
-    // 1. Update the state
-    setClass(className);
-
-    // 2. Get updated state
-    const currentState = getState();
-
-    // 3. Update the UI
-    renderClassBar(ERENSHOR_CLASSES, className);
-    renderClassDescription(CLASS_DESCRIPTIONS[className] || 'No description available');
-
-    // Render stat priorities
-    const statWeights = CLASS_STAT_WEIGHTS[className] || {};
-    renderStatPriorities(statWeights);
-
-    // Render proficiencies
-    const proficiencies = CLASS_PROFICIENCIES[className] || {};
-    renderProficiencies(proficiencies);
-
-    // NEW: Render ascensions
-    const ascensions = getAscensionsForClass(className);
-    renderAscensions(ascensions);
-
-    // 4. Show confirmation
-    showMessage(`Switched to ${className}`, true);
-}
-
-function debugAscensions() {
-    console.log("=== ASCENSION DEBUG ===");
-    console.log("AscendencyData length:", AscendencyData?.length);
-    console.log("First item:", AscendencyData?.[0]);
-
-    // Group by usedBy
-    const byClass = {};
-    AscendencyData.forEach(asc => {
-        const classId = asc.usedBy;
-        if (!byClass[classId]) {
-            byClass[classId] = [];
-        }
-        byClass[classId].push(asc.name);
-    });
-
-    console.log("Grouped by class ID:", byClass);
-}
 // Get ascensions for the current class
 function getAscensionsForClass(className) {
-    // Map class names to IDs (based on the debug output)
     const classIdMap = {
         "Windblade": 1,
         "Arcanist": 2,
@@ -129,43 +85,155 @@ function getAscensionsForClass(className) {
     };
 
     const classId = classIdMap[className];
-    if (!classId) {
-        console.log(`No class ID mapping for ${className}`);
+    if (!classId) return [];
+
+    const classAscensions = AscendencyData.filter(asc => asc.usedBy === classId);
+    const generalAscensions = AscendencyData.filter(asc => asc.usedBy === 0);
+
+    return [...classAscensions, ...generalAscensions];
+}
+
+// Load gear data with cache busting
+async function loadGearData() {
+    try {
+        const module = await import(`./gear-data.js?v=${Date.now()}`);
+        gearData = module.gearData;
+        console.log(`✅ Loaded ${gearData.length} gear items`);
+        return true;
+    } catch (error) {
+        console.error("Failed to load gear data:", error);
+        showMessage("Failed to load gear database", false);
+        return false;
+    }
+}
+setTimeout(() => {
+    // Test current gear
+    const testGear = {
+        head: { name: "Test Helm", stats: { str: 5, dex: 3 } },
+        chest: { name: "Test Chest", stats: { str: 8, end: 5 } },
+        primary: { name: "Test Sword", stats: { str: 12, dex: 4 } },
+        ring1: { name: "Test Ring", stats: { int: 6, wis: 3 } }
+    };
+    renderCurrentGear(testGear);
+
+    // Test loadout
+    const testLoadout = {
+        head: { name: "Optimized Helm", stats: { str: 8, dex: 5 } },
+        chest: { name: "Optimized Chest", stats: { str: 12, end: 8 } },
+        primary: { name: "Optimized Sword", stats: { str: 18, dex: 6 } },
+        ring1: { name: "Optimized Ring", stats: { int: 10, wis: 5 } }
+    };
+    renderLoadoutBuilder(testLoadout, 1250.5);
+}, 500);
+
+// Filter gear based on current settings
+function filterGearForCurrentClass() {
+    if (!gearData || gearData.length === 0) {
+        console.log('⏳ Gear data not loaded yet');
         return [];
     }
 
-    // Get class-specific ascensions
-    const classAscensions = AscendencyData.filter(asc => asc.usedBy === classId);
+    const currentState = getState();
+    const filters = getFilters();
+    const currentClass = currentState.className;
 
-    // Get general ascensions (usedBy: 0) that are available to everyone
-    const generalAscensions = AscendencyData.filter(asc => asc.usedBy === 0);
+    const filtered = gearData.filter(item => {
+        if (!item.classes || !item.classes.includes(currentClass)) return false;
+        if (item.lvl < filters.minLevel || item.lvl > filters.maxLevel) return false;
+        if (filters.searchText && !item.name.toLowerCase().includes(filters.searchText)) return false;
+        if (filters.slot !== 'All' && filters.slot !== '' && item.slot !== filters.slot) return false;
+        return true;
+    });
 
-    // Combine them (class-specific first, then general)
-    const allAscensions = [...classAscensions, ...generalAscensions];
-
-    console.log(`Found ${classAscensions.length} class-specific + ${generalAscensions.length} general ascensions for ${className}`);
-    console.log(`Total: ${allAscensions.length} ascensions`);
-
-    return allAscensions;
+    return filtered;
 }
 
-// TEMPORARY DEBUG - add at the very bottom of script.js
+// Handle filter changes
+function onFilterChange() {
+    if (!gearData || gearData.length === 0) return;
+    const filteredGear = filterGearForCurrentClass();
+    renderGearList(filteredGear);
+}
+
+// Set up filter listeners
+function setupFilterListeners() {
+    const minInput = document.getElementById('filter-level-min');
+    const maxInput = document.getElementById('filter-level');
+    const searchInput = document.getElementById('filter-name');
+    const slotSelect = document.getElementById('filter-slot');
+
+    if (minInput) minInput.addEventListener('input', (e) => {
+        setFilterMinLevel(parseInt(e.target.value) || 1);
+        onFilterChange();
+    });
+
+    if (maxInput) maxInput.addEventListener('input', (e) => {
+        setFilterMaxLevel(parseInt(e.target.value) || 35);
+        onFilterChange();
+    });
+
+    if (searchInput) searchInput.addEventListener('input', (e) => {
+        setFilterSearch(e.target.value);
+        onFilterChange();
+    });
+
+    if (slotSelect) slotSelect.addEventListener('change', (e) => {
+        setFilterSlot(e.target.value);
+        onFilterChange();
+    });
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    document.addEventListener('classSelected', (event) => {
+        handleClassSelection(event.detail.className);
+    });
+}
+
+// Handle class selection
+function handleClassSelection(className) {
+    console.log(`Class selected: ${className}`);
+
+    setClass(className);
+    const currentState = getState();
+
+    // Update ALL UI components
+    renderClassBar(ERENSHOR_CLASSES, className);
+    renderClassDescription(CLASS_DESCRIPTIONS[className] || 'No description available');
+    renderStatPriorities(CLASS_STAT_WEIGHTS[className] || {});
+    renderProficiencies(CLASS_PROFICIENCIES[className] || {});
+    renderAscensions(getAscensionsForClass(className));
+
+    // Update gear if loaded
+    if (gearData && gearData.length > 0) {
+        const filteredGear = filterGearForCurrentClass();
+        renderGearList(filteredGear);
+    }
+
+    showMessage(`Switched to ${className}`, true);
+}
+
+// ==================== INITIALIZATION ====================
+console.log("🚀 Sloptimizer initializing with modules...");
+
+async function initializeApp() {
+    console.log("Initializing app...");
+
+    setupEventListeners();
+    setupFilterListeners();
+
+    await loadGearData();
+    handleClassSelection('Paladin');
+
+    showMessage("✅ Sloptimizer fully loaded!", true);
+}
+
+// Start the app
+initializeApp();
+
+// Debug info
 console.log("🔍 DEBUG: Checking initialization...");
 console.log("- DOM ready?", document.readyState);
 console.log("- Class bar element:", document.getElementById('class-bar'));
 console.log("- ERENSHOR_CLASSES:", ERENSHOR_CLASSES);
 console.log("- renderClassBar type:", typeof renderClassBar);
-
-// ==================== START THE APP ====================
-function initializeApp() {
-    console.log("Initializing app...");
-
-    // Set up event listeners
-    setupEventListeners();
-
-    // Set default class (Paladin)
-    handleClassSelection('Paladin');
-}
-
-// Start the app
-initializeApp();

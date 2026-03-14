@@ -1189,3 +1189,79 @@ input[type=number] {
 .asc-card:hover .rank-dot.filled {
     background: var(--text-bright);
 }
+
+/* Current Gear Panel */
+.gear-slot {
+    transition: all 0.2s ease;
+}
+
+.gear-slot:hover {
+    border-color: var(--text-bright);
+    transform: translateY(-2px);
+}
+
+.unequip-btn:hover {
+    color: var(--text-bright) !important;
+    transform: scale(1.2);
+}
+
+/* Loadout Builder */
+.quick-equip-btn:hover {
+    background: var(--text-bright) !important;
+    color: var(--bg-dark) !important;
+    border-color: var(--text-bright) !important;
+}
+
+/* Panel headers */
+.panel-header {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 15px;
+    background: var(--panel-bg-light);
+}
+
+.panel-header h2 {
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    margin: 0;
+}
+
+/* Equip Button */
+.equip-btn {
+    width: 100%;
+    padding: 6px;
+    margin-top: 8px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.equip-btn:hover {
+    background: var(--text-bright);
+    color: var(--bg-dark);
+    border-color: var(--text-bright);
+}
+
+/* Gear Card adjustments */
+.gear-card {
+    background: var(--panel-bg-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.gear-card:hover {
+    border-color: var(--text-dim);
+    background: var(--panel-bg-hover);
+    transform: translateY(-2px);
+}
