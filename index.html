@@ -5,15 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Erenshor Gear Sloptimizer</title>
-
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap"
     rel="stylesheet">
-
-  <!-- small transparent favicon to prevent automatic 404 request -->
-  <link rel="icon"
-    href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAGAAAAAAAQAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////AAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A" />
-
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -22,18 +16,16 @@
 
   <header>
     <h1>Erenshor Gear Sloptimizer</h1>
-    <p style="font-size:.78rem;color:var(--text-dim);font-style:italic;margin-top:.4rem">
-      Art and data assets used in this tool are the property of Burgee Media, creators of Erenshor. This is a
-      non-commercial fan project and is not affiliated with or endorsed by Burgee Media.
-
-      Produced by Claude (Anthropic) at the request of ChillyChinchilla.
-    </p>
+    <p style="font-size:.78rem;color:var(--text-dim);font-style:italic;margin-top:.4rem">Produced by Claude (Anthropic)
+      at the request of ChillyChinchilla</p>
   </header>
 
   <div class="class-bar" id="class-bar"></div>
   <div class="class-desc" id="class-desc"></div>
 
   <div class="app">
+
+    <!-- Tutorial -->
     <div class="panel" style="margin-bottom:2rem">
       <div class="panel-header" id="tutorial-header"
         style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
@@ -42,12 +34,18 @@
       </div>
       <div class="tutorial-body"
         style="display:none;padding:1rem 1.25rem;font-size:.82rem;line-height:1.8;color:var(--text-dim)">
-        <p><strong>1. Pick your class.</strong> The bar at the top sets your class and loads relevant gear.</p>
-        <p><strong>2. Find your best loadout.</strong> Set your level and click <em>Find Best Loadout</em>.</p>
-        <p><strong>3. Track your current gear.</strong> Fill in the Current Gear panel to see comparison scores.</p>
+        <p><strong style="color:var(--text-bright)">1. Pick your class.</strong> Set your class in the bar above. Stat
+          weights and gear are preloaded for your class.</p>
+        <p><strong style="color:var(--text-bright)">2. Find your best loadout.</strong> Set Gear Level, quality tier,
+          and Char Level, then click "Find Best Loadout".</p>
+        <p><strong style="color:var(--text-bright)">3. Track your current gear.</strong> Fill your current gear on the
+          left panel. Loadout comparison shows upgrades.</p>
+        <p><strong style="color:var(--text-bright)">4. Add missing items.</strong> Use "Add Custom Item" to create new
+          gear manually or via AI lookup.</p>
       </div>
     </div>
 
+    <!-- Stat + Proficiency Panels -->
     <div class="row">
       <div class="panel">
         <div class="panel-header">
@@ -55,233 +53,157 @@
           <button class="btn btn-ghost" style="font-size:.7rem;padding:.25rem .7rem" onclick="resetWeights()">Reset
             Defaults</button>
         </div>
-        <div class="panel-body">
-          <div id="stat-tier-panel"></div>
-        </div>
+        <div class="panel-body" id="stat-tier-panel"></div>
       </div>
+
       <div class="panel">
-        <div class="panel-header" style="cursor:pointer;user-select:none" onclick="toggleProfPanel()">
+        <div class="panel-header" style="cursor:pointer" onclick="toggleProfPanel()">
           <h2>Proficiencies</h2>
           <span id="prof-panel-chevron" style="font-size:.75rem;color:var(--text-dim)">▼</span>
         </div>
         <div id="prof-panel-body">
           <div class="panel-body">
+            <p class="note" style="margin-bottom:.75rem">Each proficiency amplifies the corresponding stat by 1% per
+              point.</p>
             <div id="prof-table"></div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Ascensions Panel -->
+    <div class="panel" style="margin-bottom:2rem">
+      <div class="panel-header" style="cursor:pointer" onclick="toggleAscPanel()">
+        <h2>Ascensions</h2>
+        <span id="asc-panel-chevron"
+          style="font-size:.75rem;color:var(--text-dim);display:inline-block;transform:rotate(-90deg)">&#9660;</span>
+      </div>
+      <div id="asc-panel-body" style="display:none">
+        <div class="panel-body" id="asc-panel-inner">
+          <!-- JS will populate ascensions -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Optimize Panel -->
     <div class="panel" style="margin-bottom:2rem">
       <div class="panel-header">
         <h2>Optimize</h2>
       </div>
-      <div class="panel-body">
-        <div style="display:flex;flex-wrap:wrap;gap:1.5rem;margin-bottom:1.5rem;align-items:flex-end">
-          <div style="display:flex;flex-direction:column;gap:.35rem">
-            <label style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em">Min Gear
-              Level</label>
-            <input type="number" id="filter-level-min" placeholder="1" style="width:70px" onchange="onGearLevelChange()"
-              value="1">
+      <div class="panel-body" style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start">
+
+        <div class="tier-selector" style="flex:1;min-width:220px">
+          <div
+            style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;margin-bottom:.5rem">
+            Item Quality</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button class="tier-btn active" id="tier-base" onclick="setTier('base')">⚔ Base</button>
+            <button class="tier-btn" id="tier-blessed" onclick="setTier('blessed')">✦ Blessed</button>
+            <button class="tier-btn" id="tier-double" onclick="setTier('double')">✦✦ Godly</button>
           </div>
-          <div style="display:flex;flex-direction:column;gap:.35rem">
-            <label style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em">Max Gear
-              Level</label>
-            <input type="number" id="filter-level" placeholder="35" style="width:70px" onchange="onGearLevelChange()"
-              value="35">
+          <p class="note" id="tier-note" style="margin-top:.5rem;font-size:.75rem">Optimizing with base item stats.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:.6rem">
+          <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:.4rem">
+              <label
+                style="font-size:.78rem;color:var(--text-dim);white-space:nowrap;font-family:'Cinzel',serif;letter-spacing:.08em">Gear
+                Level:</label>
+              <input type="number" id="filter-level-min" placeholder="1" min="1" max="35" oninput="onGearLevelChange()"
+                style="width:42px;text-align:center">
+              <span style="color:var(--text-dim);font-size:.8rem">–</span>
+              <input type="number" id="filter-level" placeholder="35" min="1" max="35" oninput="onGearLevelChange()"
+                style="width:42px;text-align:center">
+            </div>
+
+            <div style="display:flex;align-items:center;gap:.4rem">
+              <label
+                style="font-size:.78rem;color:var(--text-dim);white-space:nowrap;font-family:'Cinzel',serif;letter-spacing:.08em">Char
+                Level:</label>
+              <input type="number" id="char-level" placeholder="35" min="1" max="35" value="35"
+                oninput="onCharLevelChange()" style="width:42px;text-align:center">
+            </div>
           </div>
+
+          <p class="note" style="font-size:.72rem">Gear level range · Char level used for formula scoring</p>
+        </div>
+
+        <div id="no2h-wrap" style="display:none;flex-direction:column;gap:.4rem">
+          <label
+            style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--text-dim);white-space:nowrap;letter-spacing:.08em">Weapon
+            Preference:</label>
+          <div style="display:flex;gap:.35rem">
+            <button id="wpref-any" onclick="setWeaponPref('any')" class="tier-btn active">Any</button>
+            <button id="wpref-1h" onclick="setWeaponPref('1h')" class="tier-btn">1H + Shield</button>
+            <button id="wpref-2h" onclick="setWeaponPref('2h')" class="tier-btn">2H Only</button>
+          </div>
+          <p class="note" id="wpref-note" style="font-size:.72rem">Optimizer considers all weapons</p>
+        </div>
+
+        <div style="display:flex;align-items:center">
           <button class="optimize-btn" onclick="optimizeAndScroll()">⚔ Find Best Loadout ⚔</button>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-          <div style="display:flex;flex-direction:column;gap:.5rem;width:100%">
-            <label style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em">Weapon
-              Preference</label>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="no2h-wrap">
-              <button class="btn btn-ghost" id="wpref-any" onclick="setWeaponPref('any')"
-                style="font-size:.7rem;padding:.4rem .8rem">Any Weapons</button>
-              <button class="btn btn-ghost" id="wpref-1h" onclick="setWeaponPref('1h')"
-                style="font-size:.7rem;padding:.4rem .8rem">1H + Shield</button>
-              <button class="btn btn-ghost" id="wpref-2h" onclick="setWeaponPref('2h')"
-                style="font-size:.7rem;padding:.4rem .8rem">2H Only</button>
-            </div>
-            <div style="font-size:.7rem;color:var(--text-dim);font-style:italic" id="wpref-note">Optimizer considers all
-              weapons</div>
+
+      </div>
+    </div>
+
+    <!-- Current Gear + Loadout Builder -->
+    <div id="results"
+      style="margin-bottom:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
+      <div id="current-gear-panel" class="panel"></div>
+      <div id="loadout-builder-panel" class="panel"></div>
+    </div>
+
+    <div id="comparison-bar" style="margin-bottom:2rem"></div>
+
+    <!-- Gear Database -->
+    <div class="panel" style="margin-bottom:2rem">
+      <div class="panel-header" style="cursor:pointer" onclick="toggleGearDb()">
+        <h2>Gear Database <span id="gear-count" style="font-weight:400;color:var(--text-dim)">(0 items)</span></h2>
+        <span id="gear-db-chevron"
+          style="font-size:.75rem;color:var(--text-dim);transition:transform .25s;display:inline-block">▶</span>
+      </div>
+      <div id="gear-db-body" style="display:none">
+        <div class="panel-body">
+          <div class="filter-bar">
+            <label>Search:</label>
+            <input type="text" id="filter-name" placeholder="Name…" oninput="renderGearList()" style="max-width:180px">
+            <select id="filter-slot" onchange="renderGearList()" style="max-width:140px">
+              <option value="">All Slots</option>
+              <option>Head</option>
+              <option>Neck</option>
+              <option>Chest</option>
+              <option>Back</option>
+              <option>Arms</option>
+              <option>Waist</option>
+              <option>Legs</option>
+              <option>Feet</option>
+              <option>Hands</option>
+              <option>Wrist</option>
+              <option>Ring</option>
+              <option>Primary</option>
+              <option>Secondary</option>
+              <option>Aura</option>
+              <option>Charm</option>
+            </select>
+            <button class="btn btn-ghost"
+              style="font-size:.7rem;padding:.25rem .7rem;color:var(--red-light);border-color:var(--red)"
+              onclick="clearAllGear();event.stopPropagation()">Clear All</button>
           </div>
         </div>
+        <div class="gear-list" id="gear-list"></div>
       </div>
     </div>
 
-    <!-- Gear database panel -->
-    <div class="panel" style="margin-bottom:2rem">
-      <div class="panel-header">
-        <h2>Gear Database</h2>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn btn-ghost" style="font-size:.7rem;padding:.25rem .7rem" onclick="loadWikiGear()">Load Wiki
-            Gear</button>
-          <button class="btn btn-ghost" style="font-size:.7rem;padding:.25rem .7rem" onclick="clearAllGear()">Clear
-            All</button>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem">
-          <input id="filter-name" placeholder="name…" oninput="renderGearList()" style="flex:1;min-width:120px">
-          <select id="filter-slot" onchange="renderGearList()" style="width:110px">
-            <option value="">any slot</option>
-            <option>Head</option>
-            <option>Neck</option>
-            <option>Chest</option>
-            <option>Back</option>
-            <option>Arms</option>
-            <option>Waist</option>
-            <option>Legs</option>
-            <option>Feet</option>
-            <option>Hands</option>
-            <option>Wrist</option>
-            <option>Ring</option>
-            <option>Primary</option>
-            <option>Secondary</option>
-            <option>Aura</option>
-            <option>Charm</option>
-          </select>
-          <input type="number" id="filter-level-min" placeholder="min lvl" style="width:70px"
-            oninput="renderGearList()">
-          <input type="number" id="filter-level" placeholder="max lvl" style="width:70px" oninput="renderGearList()">
-        </div>
-        <div id="gear-count" style="margin-bottom:.5rem;color:var(--text-dim)"></div>
-        <div id="gear-list" class="gear-list"></div>
-      </div>
-    </div>
-
-    <div id="results">
-      <div id="results-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-        <div id="current-gear-panel"></div>
-        <div id="loadout-builder-panel"></div>
-      </div>
-    </div>
-
-    <div id="comparison-bar"></div>
   </div>
 
   <script src="gear-data.js"></script>
-
+  <script src="AbilityData.js"></script>
+  <script src="StatsEngine.js"></script>
+  <script src="DamageCalcEngine.js"></script>
+  <script src="uiRenderer.js"></script>
   <script src="script.js"></script>
-
-  <!-- Custom Item Panel -->
-  <div style="max-width:900px;margin:1.5rem auto;padding:0 1rem">
-    <div class="panel">
-      <div class="panel-header" style="cursor:pointer;user-select:none" onclick="toggleAddItem()">
-        <h2>Add Custom Item</h2>
-        <span id="add-item-chevron"
-          style="font-size:.75rem;color:var(--text-dim);transition:transform .25s;display:inline-block">▶</span>
-      </div>
-      <div id="add-item-body" style="display:none">
-        <div class="panel-body">
-          <p class="note">Look up any Erenshor item by name and AI will fill in the stats.</p>
-          <div class="ai-input-row">
-            <input type="text" id="ai-item-name" placeholder="Item name…" onkeydown="if(event.key==='Enter')aiLookup()">
-            <button class="btn btn-blue" onclick="aiLookup()" id="lookup-btn">✦ Lookup</button>
-          </div>
-          <div class="ai-status" id="ai-status"></div>
-          <hr class="div">
-          <div class="form-grid">
-            <div class="form-field" style="grid-column:1/-1"><label>Item Name</label><input type="text" id="item-name"
-                placeholder="Name"></div>
-            <div class="form-field"><label>Slot</label>
-              <select id="item-slot">
-                <option>Head</option>
-                <option>Neck</option>
-                <option>Chest</option>
-                <option>Back</option>
-                <option>Arms</option>
-                <option>Waist</option>
-                <option>Legs</option>
-                <option>Feet</option>
-                <option>Hands</option>
-                <option>Wrist</option>
-                <option>Ring</option>
-                <option>Primary</option>
-                <option>Secondary</option>
-                <option>Aura</option>
-              </select>
-            </div>
-            <div class="form-field"><label>Level Req</label><input type="number" id="item-level" placeholder="1" min="1"
-                max="100"></div>
-            <div id="stat-inputs" style="display:contents"></div>
-            <div class="btn-row" style="grid-column:1/-1">
-              <button class="btn btn-gold" onclick="addItemManual()">+ Add Item</button>
-              <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notes Section -->
-  <div style="max-width:900px;margin:1.5rem auto;padding:0 1rem">
-    <div class="panel" style="border-color:var(--border)">
-      <div class="panel-header" id="notes-header"
-        style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
-        <h2 style="font-size:.8rem;letter-spacing:.1em;color:var(--text-dim)">📋 NOTES &amp; DE-SLOPIFICATION</h2>
-        <span class="chevron" style="font-size:.75rem;color:var(--text-dim)">▶ show</span>
-      </div>
-      <div class="notes-body"
-        style="display:none;padding:1rem 1.25rem;font-size:.82rem;line-height:1.7;color:var(--text-dim)">
-        <p style="margin:0 0 1rem">
-          <strong style="color:var(--text-bright)">What Gear Score Means</strong> — Each item's score is a single number
-          representing how much that item contributes to your character's effectiveness <em>for your current class and
-            stat priorities</em>. It is not a universal item rating — the same piece can score very differently for a
-          Reaver versus an Arcanist. Higher score means the item does more work for your build. The score breakdown
-          tooltip (hover any slot) shows exactly which stats are driving the number.
-          <strong style="color:var(--text-bright)">What it doesn't tell you:</strong> score doesn't account for content
-          context (a resistance-heavy piece may be worthless in one zone and essential in another), set bonuses if any
-          exist, or personal playstyle preferences. Treat it as a strong starting point for comparison, not a final
-          verdict.
-        </p>
-        <p style="margin:0 0 1rem">
-          <strong style="color:var(--text-bright)">How the Score is Calculated</strong> — Scoring uses the actual game
-          formulas from <em>Stats.cs</em>, weighted by your stat priority tiers (Core 10 / Primary 7 / Secondary 4 /
-          Ignore 0). Each class has different ScaleMod values baked in — STR is worth more to a Reaver (StrScaleMod 25)
-          than an Arcanist (StrScaleMod 3) even at identical tier settings, because the game itself amplifies it less
-          for casters. The formulas model: melee damage (STR × StrScaleMod), hit chance and crit (DEX), AC mitigation
-          (AGI scales with level — much more valuable at level 35 than level 10), max HP (END is quadratic with level),
-          mana pool and regen (INT and WIS), and elemental resistances (CHA). Haste uses diminishing returns near the
-          60% game cap. Armor Rating scores as <em>AC × MitigationBonus²</em>, so it rewards classes with high
-          mitigation (Paladin 1.15×) more than cloth wearers. Worn and aura effects score at full value; proc effects at
-          half value. <strong style="color:var(--text-bright)">Blessed</strong> items multiply all stats ×1.5 and add +1
-          Resonance; <strong style="color:var(--text-bright)">Godly</strong> items multiply ×2 and add +2 Resonance.
-        </p>
-        <p style="margin:0 0 1rem">
-          <strong style="color:var(--text-bright)">Weapon DPS</strong> — Weapons are scored using the actual damage
-          formula from <em>Stats.cs</em>.
-          Melee weapons use the game's formula factor <em>(1 + (dmg−1) × 0.4) / delay</em>, weighted by your STR
-          priority plus half your DEX priority; two-handed weapons get an additional 10% bonus on the STR term.
-          Bows use flat <em>dmg / delay</em> weighted by DEX only — the source confirms bows have no STR or DEX scaling.
-          Wands use flat <em>dmg / delay</em> weighted by INT at a reduced constant, since wand auto-attacks are a
-          secondary damage source for casters.
-          The score contribution is visible in the breakdown tooltip when hovering a weapon slot.
-          <strong style="color:var(--text-bright)">What this doesn't capture:</strong> proc effects on weapons (e.g.
-          on-hit spells), dual-wield off-hand hit probability (which is level-dependent and probabilistic), or the
-          interaction between haste and attack delay — so treat weapon scores as a useful signal, not the full picture
-          for weapon comparison.
-        </p>
-        <p style="margin:0">
-          <strong style="color:var(--text-bright)">Charms</strong> — Charms are included as a 15th gear slot.
-          Unlike other slots, charms don't grant flat stats — they grant <em>proficiency bonuses</em>, which amplify a
-          corresponding primary stat by 1% per point (e.g. Physicality amplifies STR, Finesse amplifies DEX).
-          The optimizer scores charm proficiency bonuses by estimating how much each bonus point is worth given your
-          current gear's stat totals and your stat priority weights — a Physicality bonus is worth more if you have lots
-          of STR gear and STR is a Primary priority.
-          Charm bonuses appear as a blue ✦ column in the Proficiency panel.
-          <strong style="color:var(--text-bright)">Charm of the Shield</strong> is a special case: its Mitigation
-          proficiency has no direct stat mapping, so it scores via your Armor Rating weight as a proxy — it will rank
-          highly for tank builds (Paladin, Reaver) with Armor Rating toggled on.
-
-        </p>
-      </div>
-    </div>
-  </div>
-
 </body>
 
 </html>
