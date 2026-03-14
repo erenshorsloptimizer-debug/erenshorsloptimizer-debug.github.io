@@ -1,295 +1,171 @@
-/**
- * ERENSHOR GEAR SLOPTIMIZER - Main Controller
- * Handles UI, State, and Coordination between Engines
- */
+// script.js - The main controller/entry point
 
-// -----------------------------
-// GLOBAL APP STATE
-// -----------------------------
-let activeClass = 'Arcanist';
-let gearLvlMin = 1;
-let gearLvlMax = 35;
-let charLvl = 35;
-let weaponPref = 'any';
-let currentChar = null;
+// ==================== IMPORTS ====================
+// Bring in the functions we need from other files
+import {
+    showMessage,
+    renderClassBar,
+    renderClassDescription,
+    renderStatPriorities,
+    renderProficiencies,
+    renderAscensions,
+    toggleAscensionsPanel
+} from './uiRenderer.js';
+import { getState, setClass } from './characterState.js';
+import AscendencyData from './Ascendency_Data.js';
+// We'll import more as we add them
 
-// Stat Weights
-window.statWeights = {
-    strength: 2,
-    dexterity: 1,
-    agility: 1,
-    endurance: 1,
-    intelligence: 0.5,
-    wisdom: 0.5,
-    charisma: 0.5,
-    armor: 1
+// ==================== DATA ====================
+// The real classes from the game (we could also import this from a data file later)
+const ERENSHOR_CLASSES = [
+    "Windblade", "Paladin", "Reaver", "Druid", "Stormcaller", "Arcanist"
+];
+
+// Class descriptions (from your older version)
+const CLASS_DESCRIPTIONS = {
+    Windblade: 'Dual-wield melee DPS. Primary stats: DEX (2:1 over STR), AGI. Aura: Presence of Vitheo grants DEX/AGI and Attack Speed.',
+    Paladin: 'Tanky melee with heals. Primary stats: STR and END for survivability, with some INT/WIS for healing. Aura: Presence of Soluna grants STR/END.',
+    Reaver: 'Dark melee DPS. Primary stats: STR for damage, END for sustain. Aura: Rising Shadows grants party-wide proc effects.',
+    Druid: 'Nature caster/healer. Primary stats: INT and WIS for spells, AGI for some builds. Aura: Presence of Fernalla grants Lifesteal.',
+    Stormcaller: 'Elemental caster DPS. Primary stats: INT for spell power, AGI from aura. Aura: Presence of Storms grants AGI and Magic Resist.',
+    Arcanist: 'Pure magic DPS/utility. Primary stats: INT for damage, WIS and CHA for mana sustain. Aura: Presence of Brax grants INT/WIS/CHA.'
+};
+// Class stat weights (from your older version)
+const CLASS_STAT_WEIGHTS = {
+    Windblade: { dex: 10, str: 7, res: 1, agi: 4, end: 1, int: 0, wis: 0, cha: 0, haste: 8, armor: 0 },
+    Paladin: { str: 8, end: 8, dex: 4, agi: 2, int: 3, wis: 3, cha: 1, res: 2, haste: 0, armor: 8 },
+    Reaver: { str: 10, end: 6, dex: 4, agi: 3, int: 1, wis: 0, cha: 0, res: 1, haste: 8, armor: 8 },
+    Druid: { int: 10, wis: 8, agi: 4, end: 3, str: 2, dex: 1, cha: 2, res: 8, haste: 0, armor: 0 },
+    Stormcaller: { int: 10, agi: 6, wis: 5, dex: 2, end: 2, str: 1, cha: 2, res: 4, haste: 8, armor: 0 },
+    Arcanist: { int: 10, wis: 7, cha: 5, end: 2, agi: 1, str: 0, dex: 0, res: 8, haste: 0, armor: 0 }
+};
+// Class base proficiencies (from your older version)
+const CLASS_PROFICIENCIES = {
+    Windblade: { physicality: 10, hardiness: 8, finesse: 12, defense: 6, arcanism: 8, restoration: 6, mind: 5 },
+    Paladin: { physicality: 10, hardiness: 10, finesse: 12, defense: 6, arcanism: 6, restoration: 10, mind: 6 },
+    Reaver: { physicality: 14, hardiness: 8, finesse: 12, defense: 4, arcanism: 8, restoration: 6, mind: 5 },
+    Druid: { physicality: 5, hardiness: 10, finesse: 5, defense: 10, arcanism: 7, restoration: 10, mind: 5 },
+    Stormcaller: { physicality: 6, hardiness: 6, finesse: 12, defense: 6, arcanism: 10, restoration: 6, mind: 6 },
+    Arcanist: { physicality: 3, hardiness: 10, finesse: 3, defense: 3, arcanism: 14, restoration: 9, mind: 10 }
+};
+// Class ID to name mapping (based on usedBy values from Ascendency_Data.js)
+const CLASS_ID_TO_NAME = {
+    2: "Arcanist",      // Arcane Mastery, Cooldown Reduction, etc.
+    // We'll discover the others from your debug output
 };
 
-// -----------------------------
-// UI NAMESPACE
-// -----------------------------
-window.UI = {};
+// Debug: See all available class IDs
+console.log("Available class IDs:", [...new Set(AscendencyData.map(asc => asc.usedBy))]);
+// ==================== INITIALIZATION ====================
+console.log("🚀 Sloptimizer initializing with modules...");
 
-// -----------------------------
-// PANEL TOGGLES
-// -----------------------------
-window.toggleProfPanel = function () {
-    const body = document.getElementById('prof-panel-body');
-    const chevron = document.getElementById('prof-panel-chevron');
-    if (!body || !chevron) return;
-
-    const open = body.style.display !== 'none';
-    body.style.display = open ? 'none' : 'block';
-    chevron.textContent = open ? '▶' : '▼';
-};
-
-// -----------------------------
-// ASCENSIONS PANEL TOGGLE
-// -----------------------------
-window.toggleAscPanel = function () {
-    const body = document.getElementById('asc-panel-body');
-    const chevron = document.getElementById('asc-panel-chevron');
-    if (!body || !chevron) return;
-
-    const open = body.style.display !== 'block';
-    body.style.display = open ? 'block' : 'none';
-    chevron.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
-};
-
-// -----------------------------
-// CLASS SELECTION
-// -----------------------------
-window.setActiveClass = function (className) {
-    activeClass = className;
-
-    if (typeof StatsEngine !== 'undefined') {
-        currentChar = StatsEngine.initCharacter(className, charLvl);
-    }
-
-    UI.renderClassBar();
-    refreshAll();
-};
-
-// -----------------------------
-// GEAR / CHAR LEVEL HANDLERS
-// -----------------------------
-window.onGearLevelChange = function () {
-    gearLvlMin = parseInt(document.getElementById('filter-level-min')?.value) || 1;
-    gearLvlMax = parseInt(document.getElementById('filter-level')?.value) || 35;
-    refreshAll();
-};
-
-window.onCharLevelChange = function () {
-    charLvl = parseInt(document.getElementById('char-level')?.value) || 35;
-
-    if (currentChar) currentChar.level = charLvl;
-
-    refreshAll();
-};
-
-// -----------------------------
-// STAT WEIGHT PANEL
-// -----------------------------
-UI.renderStatWeights = function () {
-    const panel = document.getElementById('stat-tier-panel');
-    if (!panel) return;
-
-    const stats = [
-        { key: 'strength', label: 'STR', short: 'Strength' },
-        { key: 'dexterity', label: 'DEX', short: 'Finesse' },
-        { key: 'agility', label: 'AGI', short: 'Agility' },
-        { key: 'endurance', label: 'END', short: 'Toughness' },
-        { key: 'intelligence', label: 'INT', short: 'Aptitude' },
-        { key: 'wisdom', label: 'WIS', short: 'Spirit' },
-        { key: 'charisma', label: 'CHA', short: 'Presence' },
-        { key: 'armor', label: 'Armor', short: 'Protection' }
-    ];
-
-    const tiers = [
-        { label: 'Primary', value: 2.0 },
-        { label: 'Secondary', value: 1.0 },
-        { label: 'Utility', value: 0.5 },
-        { label: 'Off', value: 0.0 }
-    ];
-
-    let html = '';
-    stats.forEach(stat => {
-        const currentWeight = window.statWeights[stat.key] ?? 0;
-
-        html += `
-        <div class="stat-row">
-            <div class="stat-label"><span>${stat.label}</span> ${stat.short}</div>
-            <div class="btn-row" style="margin-top:0;flex-grow:1;">
-        `;
-
-        tiers.forEach(t => {
-            const isActive = currentWeight === t.value;
-            const btnClass = isActive ? 'btn-gold' : 'btn-ghost';
-
-            html += `<button class="btn ${btnClass}" style="padding:.3rem .6rem;font-size:.65rem;" onclick="updateStatWeight('${stat.key}', ${t.value})">${t.label}</button>`;
-        });
-
-        html += `</div></div>`;
+// Set up event listeners
+function setupEventListeners() {
+    // Listen for custom events from UI
+    document.addEventListener('classSelected', (event) => {
+        const className = event.detail.className;
+        handleClassSelection(className);
     });
-
-    panel.innerHTML = html;
-};
-
-// -----------------------------
-// UPDATE STAT WEIGHT
-// -----------------------------
-window.updateStatWeight = function (statKey, value) {
-    if (!statKey || !(statKey in window.statWeights)) return;
-
-    window.statWeights[statKey] = value;
-    UI.renderStatWeights();
-    refreshAll();
-};
-
-window.resetWeights = function () {
-    window.statWeights = {
-        strength: 2, dexterity: 1, agility: 1, endurance: 1,
-        intelligence: 0.5, wisdom: 0.5, charisma: 0.5, armor: 1
-    };
-    UI.renderStatWeights();
-};
-
-// -----------------------------
-// CLASS BAR RENDER
-// -----------------------------
-UI.renderClassBar = function () {
-    const bar = document.getElementById('class-bar');
-    if (!bar || typeof CLASSES === 'undefined') return;
-
-    let html = '';
-    Object.keys(CLASSES).forEach(cls => {
-        const btnClass = activeClass === cls ? 'btn-gold' : 'btn-ghost';
-        html += `<button class="btn ${btnClass}" onclick="setActiveClass('${cls}')">${cls}</button>`;
-    });
-
-    bar.innerHTML = html;
-};
-
-// -----------------------------
-// ABILITIES PANEL
-// -----------------------------
-UI.renderAbilities = function () {
-    const container = document.getElementById('ability-panel-inner');
-    if (!container || typeof ABILITIES === 'undefined') return;
-
-    container.innerHTML = ABILITIES.map(a => `
-        <div class="ability-card">
-            <div class="ability-header">
-                <span class="ability-name">${a.name}</span>
-                <span class="ability-score">Lv ${a.level}</span>
-            </div>
-            <p style="font-size:.75rem;color:var(--text-dim)">
-                ${a.desc || 'No description available.'}
-            </p>
-        </div>
-    `).join('');
-};
-
-// -----------------------------
-// PROFICIENCIES PANEL
-// -----------------------------
-UI.renderProficiencies = function () {
-    const table = document.getElementById('prof-table');
-    if (!table || !currentChar) return;
-
-    const statsList = [
-        { n: 'Physicality', k: 'strength', c: 'var(--red)', label: 'STR' },
-        { n: 'Finesse', k: 'dexterity', c: 'var(--blue)', label: 'DEX' },
-        { n: 'Aptitude', k: 'intelligence', c: 'var(--gold)', label: 'INT' },
-        { n: 'Spirit', k: 'wisdom', c: 'var(--green-light)', label: 'WIS' }
-    ];
-
-    let html = '';
-    statsList.forEach(s => {
-        const baseValue = currentChar[s.k] || 0;
-        const bonusValue = 0;
-
-        html += `
-        <div class="stat-row">
-            <div class="stat-label"><span style="color:${s.c}">${s.label}</span> ${s.n}</div>
-            <div class="stat-value">${baseValue}</div>
-            <div class="stat-value" style="color:var(--blue-light)">+${bonusValue}</div>
-        </div>`;
-    });
-
-    table.innerHTML = html;
-};
-
-// -----------------------------
-// OPTIMIZATION
-// -----------------------------
-window.optimizeAndScroll = function () {
-    console.log("Running optimization for " + activeClass);
-    refreshAll();
-
-    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
-};
-
-// -----------------------------
-// GLOBAL REFRESH
-// -----------------------------
-function refreshAll() {
-    UI.renderStatWeights();
-    UI.renderProficiencies();
-    UI.renderAbilities();
 }
 
-// -----------------------------
-// INITIALIZATION
-// -----------------------------
-function init() {
-    console.log("Initializing Sloptimizer...");
+// Handle class selection
 
-    if (typeof CLASSES === 'undefined' || typeof WIKI_GEAR === 'undefined') {
-        console.error("Critical data missing. Ensure gear-data.js loads first.");
-        return;
-    }
+function handleClassSelection(className) {
+    console.log(`Class selected: ${className}`);
 
-    if (typeof StatsEngine !== 'undefined') {
-        currentChar = StatsEngine.initCharacter(activeClass, charLvl);
-    }
+    // 1. Update the state
+    setClass(className);
 
-    UI.renderClassBar();
-    UI.renderAbilities();
-    refreshAll();
+    // 2. Get updated state
+    const currentState = getState();
+
+    // 3. Update the UI
+    renderClassBar(ERENSHOR_CLASSES, className);
+    renderClassDescription(CLASS_DESCRIPTIONS[className] || 'No description available');
+
+    // Render stat priorities
+    const statWeights = CLASS_STAT_WEIGHTS[className] || {};
+    renderStatPriorities(statWeights);
+
+    // Render proficiencies
+    const proficiencies = CLASS_PROFICIENCIES[className] || {};
+    renderProficiencies(proficiencies);
+
+    // NEW: Render ascensions
+    const ascensions = getAscensionsForClass(className);
+    renderAscensions(ascensions);
+
+    // 4. Show confirmation
+    showMessage(`Switched to ${className}`, true);
 }
 
-window.onload = init;
+function debugAscensions() {
+    console.log("=== ASCENSION DEBUG ===");
+    console.log("AscendencyData length:", AscendencyData?.length);
+    console.log("First item:", AscendencyData?.[0]);
 
-// -----------------------------
-// TOOLTIP SYSTEM
-// -----------------------------
-(function () {
-    const tt = document.getElementById('gear-tooltip');
-    let timer;
+    // Group by usedBy
+    const byClass = {};
+    AscendencyData.forEach(asc => {
+        const classId = asc.usedBy;
+        if (!byClass[classId]) {
+            byClass[classId] = [];
+        }
+        byClass[classId].push(asc.name);
+    });
 
-    window.showGearTooltip = function (el, html) {
-        if (!tt) return;
-        clearTimeout(timer);
-        tt.innerHTML = html;
-        tt.style.display = 'block';
-
-        const r = el.getBoundingClientRect();
-        const tw = tt.offsetWidth, th = tt.offsetHeight;
-        let left = r.right + 8;
-        let top = r.top;
-
-        if (left + tw > window.innerWidth - 8) left = r.left - tw - 8;
-        if (top + th > window.innerHeight - 8) top = window.innerHeight - th - 8;
-        if (top < 8) top = 8;
-
-        tt.style.left = left + 'px';
-        tt.style.top = top + 'px';
+    console.log("Grouped by class ID:", byClass);
+}
+// Get ascensions for the current class
+function getAscensionsForClass(className) {
+    // Map class names to IDs (based on the debug output)
+    const classIdMap = {
+        "Windblade": 1,
+        "Arcanist": 2,
+        "Paladin": 3,
+        "Reaver": 4,
+        "Druid": 5,
+        "Stormcaller": 6
     };
 
-    window.hideGearTooltip = function () {
-        timer = setTimeout(() => { if (tt) tt.style.display = 'none'; }, 80);
-    };
+    const classId = classIdMap[className];
+    if (!classId) {
+        console.log(`No class ID mapping for ${className}`);
+        return [];
+    }
 
-    document.addEventListener('scroll', () => { if (tt) tt.style.display = 'none'; }, true);
-})();
+    // Get class-specific ascensions
+    const classAscensions = AscendencyData.filter(asc => asc.usedBy === classId);
+
+    // Get general ascensions (usedBy: 0) that are available to everyone
+    const generalAscensions = AscendencyData.filter(asc => asc.usedBy === 0);
+
+    // Combine them (class-specific first, then general)
+    const allAscensions = [...classAscensions, ...generalAscensions];
+
+    console.log(`Found ${classAscensions.length} class-specific + ${generalAscensions.length} general ascensions for ${className}`);
+    console.log(`Total: ${allAscensions.length} ascensions`);
+
+    return allAscensions;
+}
+
+// TEMPORARY DEBUG - add at the very bottom of script.js
+console.log("🔍 DEBUG: Checking initialization...");
+console.log("- DOM ready?", document.readyState);
+console.log("- Class bar element:", document.getElementById('class-bar'));
+console.log("- ERENSHOR_CLASSES:", ERENSHOR_CLASSES);
+console.log("- renderClassBar type:", typeof renderClassBar);
+
+// ==================== START THE APP ====================
+function initializeApp() {
+    console.log("Initializing app...");
+
+    // Set up event listeners
+    setupEventListeners();
+
+    // Set default class (Paladin)
+    handleClassSelection('Paladin');
+}
+
+// Start the app
+initializeApp();

@@ -1160,3 +1160,32 @@ input[type=number] {
     background: rgba(255, 255, 255, 0.1);
     color: #000;
 }
+
+/* Ascension Cards */
+.asc-card {
+    background: var(--panel-bg-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.asc-card:hover {
+    border-color: var(--text-dim);
+    background: var(--panel-bg-hover);
+}
+
+.asc-card.selected {
+    border-color: var(--text-bright);
+    background: var(--panel-bg-selected);
+}
+
+.rank-dot {
+    transition: background 0.2s ease;
+}
+
+.asc-card:hover .rank-dot.filled {
+    background: var(--text-bright);
+}

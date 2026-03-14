@@ -200,3 +200,5 @@ const DamageCalcEngine = {
         };
     }
 };
+// At the bottom of DamageCalcEngine.js  
+export { calculateDPS, calculateAutoAttackDPS, /* any other functions */ };

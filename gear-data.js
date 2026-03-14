@@ -1,3 +1,7 @@
+// gear-data.js
+export const gearData = [ 
+    // ... all your existing gear data ...
+];
 const WIKI_GEAR = [
     { name: "Cloth Hood", slot: "Head", lvl: 1, stats: { "armor": 2 }, classes: ["Arcanist", "Druid", "Paladin", "Reaver", "Stormcaller", "Windblade"], blessed: { "armor": 2, "res": 1 }, godly: { "armor": 3, "res": 2 } },
     { name: "Daggersilk Hood", slot: "Head", lvl: 1, stats: { "armor": 3, "int": 2, "wis": 2 }, classes: ["Arcanist", "Druid", "Paladin", "Reaver", "Stormcaller", "Windblade"], blessed: { "armor": 4, "int": 3, "wis": 3, "res": 1 }, godly: { "armor": 5, "int": 4, "wis": 4, "res": 2 } },

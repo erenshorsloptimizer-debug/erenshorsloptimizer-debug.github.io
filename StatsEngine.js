@@ -193,3 +193,5 @@ const StatsEngine = {
         };
     }
 };
+// At the bottom of StatsEngine.js
+export { calculateStats, applyProficiencies, /* any other functions */ };

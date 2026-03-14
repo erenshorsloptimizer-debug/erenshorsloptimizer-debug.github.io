@@ -1,3 +1,7 @@
+// AbilityData.js
+export const abilityData = [
+    // ... all your existing ability data ...
+];
 const ABILITIES = [
     {
         "name": "Arcane Proficiency",
